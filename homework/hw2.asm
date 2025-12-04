@@ -1,58 +1,97 @@
-SECTION .data
-buffer times 20 db 0
-
-SECTION .text
+section .text
 global _start
 
+_start:
+    mov     eax, 123456789
+    mov     esi, buffer
+    call    int2str
+
+    mov     edi, esi
+    
+    xor     edx, edx
+count_len:
+    cmp     byte [esi], 0
+    je      print_it
+    inc     esi
+    inc     edx
+    jmp     count_len
+
+print_it:
+    mov     eax, 4
+    mov     ebx, 1
+    mov     ecx, edi
+    int     0x80
+
+    push    eax
+    push    ebx
+    push    ecx
+    push    edx
+    mov     eax, 4
+    mov     ebx, 1
+    mov     ecx, newline
+    mov     edx, 1
+    int     0x80
+    pop     edx
+    pop     ecx
+    pop     ebx
+    pop     eax
+
+    mov     eax, 1
+    int     0x80
+
 int2str:
-    push rbx
-    push rcx
-    push rdx
-
-    mov rax, rdi
-    mov rbx, 10
-    mov rcx, 0
-
-.loop:
-    xor rdx, rdx
-    div rbx
-    add dl, '0'
-    push rdx
-    inc rcx
-    cmp rax, 0
-    jne .loop
-
-    mov rsi, rsi
-.write:
-    pop rax
-    mov [rsi], al
-    inc rsi
-    loop .write
-
-    mov byte [rsi], 0
-    pop rdx
-    pop rcx
-    pop rbx
+    push    ebx
+    push    ecx
+    push    edx
+    push    edi
+    
+    mov     edi, esi
+    mov     ebx, 10
+    
+;перевірка на нуль
+    test    eax, eax
+    jnz     convert
+    
+;якщо нуль
+    mov     byte [esi], '0'
+    inc     esi
+    mov     byte [esi], 0
+    jmp     done
+    
+convert:
+    xor     ecx, ecx
+    
+divide_loop:
+    xor     edx, edx
+    div     ebx
+    
+    add     dl, 48
+    push    dx
+    inc     ecx
+    
+    test    eax, eax
+    jnz     divide_loop
+    
+    mov     esi, edi
+    
+pop_loop:
+    pop     ax
+    mov     [esi], al       
+    inc     esi             
+    loop    pop_loop
+    
+    mov     byte [esi], 0
+    
+done:
+    mov     esi, edi
+    pop     edi
+    pop     edx
+    pop     ecx
+    pop     ebx
     ret
 
-_start:
-    mov rdi, 1234567
-    lea rsi, [buffer]
-    call int2str
+section .data
+    newline db 10
 
-    mov rdx, 0
-    mov rbx, buffer
-.find_len:
-    cmp byte [rbx+rdx], 0
-    je .len_found
-    inc rdx
-    jmp .find_len
-.len_found:
-    mov rax, 1
-    mov rdi, 1
-    lea rsi, [buffer]
-    syscall
-
-    mov rax, 60
-    xor rdi, rdi
-    syscall
+section .bss
+    buffer  resb 11

@@ -1,112 +1,135 @@
-SECTION .data
-buffer times 20 db 0
-yes db "prime", 10, 0
-no db "not prime", 10, 0
-
-SECTION .text
+section .text
 global _start
 
-int2str:
-    push rbx
-    push rcx
-    push rdx
+_start:
+    mov ax, 65      ; напишіть своє число для перевірки
+    
+    call prostoe
+    
+    mov esi, buf
+    call v_stroku
+    call print
+    
+    jnz net
+    
+    mov esi, da
+    call print
+    jmp konec
+    
+net:
+    mov esi, netu
+    call print
+    
+konec:
+    mov eax, 1
+    xor ebx, ebx
+    int 0x80
 
-    mov rax, rdi
-    mov rbx, 10
-    mov rcx, 0
-
-.loop:
-    xor rdx, rdx
-    div rbx
-    add dl, '0'
-    push rdx
-    inc rcx
-    cmp rax, 0
-    jne .loop
-
-    mov rsi, rsi
-.write:
-    pop rax
-    mov [rsi], al
-    inc rsi
-    loop .write
-
-    mov byte [rsi], 0
-
-    pop rdx
-    pop rcx
-    pop rbx
+prostoe:
+    cmp ax, 1
+    jle net_prostoe
+    
+    cmp ax, 2
+    je da_prostoe
+    cmp ax, 3
+    je da_prostoe
+    
+    test ax, 1
+    jz net_prostoe
+    
+    mov bx, 3
+    
+cikl:
+    mov cx, ax
+    shr cx, 1
+    cmp bx, cx
+    ja da_prostoe
+    
+    xor dx, dx
+    mov cx, ax
+    div bx
+    
+    test dx, dx
+    jz net_prostoe
+    
+    add bx, 2
+    jmp cikl
+    
+da_prostoe:
+    xor ax, ax
+    ret
+    
+net_prostoe:
+    mov ax, 1
+    test ax, ax
     ret
 
-strlen:
-    mov rcx, 0
-.lenloop:
-    cmp byte [rdi+rcx], 0
-    je .lendone
-    inc rcx
-    jmp .lenloop
-.lendone:
-    mov rax, rcx
+v_stroku:
+    pusha
+    
+    mov edi, esi
+    mov bx, 10
+    xor cx, cx
+    
+    cmp ax, 0
+    jne delen
+    
+    mov byte [esi], '0'
+    inc esi
+    mov byte [esi], 0
+    jmp konec2
+    
+delen:
+    xor dx, dx
+    div bx
+    add dl, '0'
+    push dx
+    inc cx
+    cmp ax, 0
+    jne delen
+    
+    mov esi, edi
+    
+obratno:
+    pop ax
+    mov [esi], al
+    inc esi
+    loop obratno
+    
+    mov byte [esi], 0
+    
+konec2:
+    popa
     ret
 
 print:
-    mov rdi, rdi
-    call strlen
-    mov rdx, rax
-    mov rax, 1
-    mov rsi, rdi
-    mov rdi, 1
-    syscall
+    pusha
+    
+    mov edi, esi
+    xor ecx, ecx
+    
+schitat:
+    cmp byte [edi], 0
+    je pechat
+    inc edi
+    inc ecx
+    jmp schitat
+    
+pechat:
+    mov eax, 4
+    mov ebx, 1
+    mov edx, ecx
+    mov ecx, esi
+    int 0x80
+    
+    popa
     ret
 
-isprime:
-    mov rax, rdi
-    cmp rax, 2
-    jl .not
-    cmp rax, 2
-    je .yesp
+section .data
+    da   db " is prime", 10, 0
+    netu db " is not prime", 10, 0
 
-    mov rbx, 2
-.check:
-    mov rcx, rbx
-    mov rdx, 0
-    div rcx
-    cmp rdx, 0
-    je .not
-    inc rbx
-    cmp rbx, rdi
-    jl .check
-.yesp:
-    mov rax, 1
-    ret
-.not:
-    mov rax, 0
-    ret
+section .bss
+    buf resb 10
 
-_start:
-    mov rax, 29
-    mov rdi, rax
-    lea rsi, [buffer]
-    call int2str
-
-    lea rdi, [buffer]
-    call print
-
-    mov rdi, rax
-    call isprime
-
-    cmp rax, 1
-    je .print_yes
-
-    lea rdi, [no]
-    call print
-    jmp .exit
-
-.print_yes:
-    lea rdi, [yes]
-    call print
-
-.exit:
-    mov rax, 60
-    xor rdi, rdi
-    syscall
+;шла друга година ночі я хочу спати, не бийте за погану роботу
